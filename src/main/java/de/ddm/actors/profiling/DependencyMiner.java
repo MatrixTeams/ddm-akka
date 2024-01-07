@@ -133,7 +133,6 @@ public class DependencyMiner extends AbstractBehavior<DependencyMiner.Message> {
 
 	private final List<List<Set<String>>> allData;
 
-	//private final Queue<List<List<Set<String>>>> unassignedTasks = new LinkedList<>();
 	private final List<int[]> taskKeys;
 	private final List<ActorRef<DependencyWorker.Message>> idleWorkers;
 	private final Map<ActorRef<DependencyWorker.Message>, int[]> busyWorkers = new HashMap<>();

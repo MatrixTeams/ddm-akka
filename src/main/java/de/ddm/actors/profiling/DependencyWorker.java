@@ -100,7 +100,6 @@ public class DependencyWorker extends AbstractBehavior<DependencyWorker.Message>
 	private Behavior<Message> handle(TaskMessage message) {
 //		this.getContext().getLog().info("Working!");
 		// I should probably know how to solve this task, but for now I just pretend some work...
-		//we are checking if the dependent column is subset of reference column.
 		this.getContext().getLog().info("Compare table " +message.getTaskTablesNum().get(0) +" Column " + message.getTaskTablesNum().get(1) +" to table "+message.getTaskTablesNum().get(2) + " Column " + message.getTaskTablesNum().get(3));
 		List<String> depColumnList = new ArrayList<>(message.getTask().get(0));
 		List<String> refColumnList = new ArrayList<>(message.getTask().get(1));
