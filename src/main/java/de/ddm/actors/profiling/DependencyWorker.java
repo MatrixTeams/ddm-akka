@@ -13,6 +13,8 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Random;
 import java.util.Set;
 
@@ -22,7 +24,7 @@ public class DependencyWorker extends AbstractBehavior<DependencyWorker.Message>
 	// Actor Messages //
 	////////////////////
 
-	public interface Message extends AkkaSerializable {
+	public interface Message extends AkkaSerializable, LargeMessageProxy.LargeMessage  {
 	}
 
 	@Getter
@@ -38,10 +40,18 @@ public class DependencyWorker extends AbstractBehavior<DependencyWorker.Message>
 	@AllArgsConstructor
 	public static class TaskMessage implements Message {
 		private static final long serialVersionUID = -4667745204456518160L;
-		ActorRef<LargeMessageProxy.Message> dependencyMinerLargeMessageProxy;
-		int task;
+		//ActorRef<LargeMessageProxy.Message> dependencyMinerLargeMessageProxy;
+		//int task;
+		ActorRef<DependencyMiner.Message> replyTo;
+		List<Set<String>> task;
+		List<Integer> taskTablesNum;
+		//List<List<Set<String>>> task;
 	}
 
+	@NoArgsConstructor
+	public static class ShutdownMessage implements Message {
+		private static final long serialVersionUID = 7516129288777469221L;
+	}
 	////////////////////////
 	// Actor Construction //
 	////////////////////////
@@ -76,30 +86,35 @@ public class DependencyWorker extends AbstractBehavior<DependencyWorker.Message>
 		return newReceiveBuilder()
 				.onMessage(ReceptionistListingMessage.class, this::handle)
 				.onMessage(TaskMessage.class, this::handle)
+				.onMessage(ShutdownMessage.class, this::handle)
 				.build();
 	}
 
 	private Behavior<Message> handle(ReceptionistListingMessage message) {
 		Set<ActorRef<DependencyMiner.Message>> dependencyMiners = message.getListing().getServiceInstances(DependencyMiner.dependencyMinerService);
 		for (ActorRef<DependencyMiner.Message> dependencyMiner : dependencyMiners)
-			dependencyMiner.tell(new DependencyMiner.RegistrationMessage(this.getContext().getSelf()));
+			dependencyMiner.tell(new DependencyMiner.RegistrationMessage(this.getContext().getSelf(), this.largeMessageProxy));
 		return this;
 	}
 
 	private Behavior<Message> handle(TaskMessage message) {
-		this.getContext().getLog().info("Working!");
+//		this.getContext().getLog().info("Working!");
 		// I should probably know how to solve this task, but for now I just pretend some work...
+		//we are checking if the dependent column is subset of reference column.
+		this.getContext().getLog().info("Compare table " +message.getTaskTablesNum().get(0) +" Column " + message.getTaskTablesNum().get(1) +" to table "+message.getTaskTablesNum().get(2) + " Column " + message.getTaskTablesNum().get(3));
+		List<String> depColumnList = new ArrayList<>(message.getTask().get(0));
+		List<String> refColumnList = new ArrayList<>(message.getTask().get(1));
+		//comparing two columns to find IND
+		//The parallelStream() method allows the comparison to be performed concurrently on multiple threads, potentially improving the performance for large sets of columns.
+		boolean isSubset = refColumnList.parallelStream().allMatch(depColumnList::contains);
 
-		int result = message.getTask();
-		long time = System.currentTimeMillis();
-		Random rand = new Random();
-		int runtime = (rand.nextInt(2) + 2) * 1000;
-		while (System.currentTimeMillis() - time < runtime)
-			result = ((int) Math.abs(Math.sqrt(result)) * result) % 1334525;
-
-		LargeMessageProxy.LargeMessage completionMessage = new DependencyMiner.CompletionMessage(this.getContext().getSelf(), result);
-		this.largeMessageProxy.tell(new LargeMessageProxy.SendMessage(completionMessage, message.getDependencyMinerLargeMessageProxy()));
+		message.getReplyTo().tell(new DependencyMiner.CompletionMessage(this.getContext().getSelf(), isSubset));
 
 		return this;
+	}
+
+	private Behavior<Message> handle(ShutdownMessage message) {
+		this.getContext().getLog().info("Shutting down Dependency Worker!");
+		return Behaviors.stopped();
 	}
 }
