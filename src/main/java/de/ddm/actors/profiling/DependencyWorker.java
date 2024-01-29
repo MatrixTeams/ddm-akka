@@ -105,7 +105,7 @@ public class DependencyWorker extends AbstractBehavior<DependencyWorker.Message>
 		List<String> refColumnList = new ArrayList<>(message.getTask().get(1));
 		//comparing two columns to find IND
 		//The parallelStream() method allows the comparison to be performed concurrently on multiple threads, potentially improving the performance for large sets of columns.
-		boolean isSubset = refColumnList.parallelStream().allMatch(depColumnList::contains);
+		boolean isSubset = depColumnList.parallelStream().allMatch(refColumnList::contains);
 
 		message.getReplyTo().tell(new DependencyMiner.CompletionMessage(this.getContext().getSelf(), isSubset));
 
